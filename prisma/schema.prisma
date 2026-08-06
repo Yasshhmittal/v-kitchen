@@ -1,0 +1,612 @@
+// V-Kitchen — Prisma schema
+//
+// Design rules encoded here:
+//  1. Nothing the owner can see on the site is hardcoded in the app. Menus,
+//     items, products, categories, banners, contact details, page copy and SEO
+//     all live in tables edited from /admin.
+//  2. Content tables carry `isActive` + `sortOrder` so the owner can hide and
+//     reorder without deleting.
+//  3. Orders store *snapshots* of name/price/image. Editing a price later must
+//     never rewrite the history of an order already placed.
+//  4. Money is Decimal(10,2), never Float.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// Staff roles. OWNER can do everything including users + settings;
+/// MANAGER manages catalogue and orders; STAFF only works the order board.
+enum Role {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+/// Time-of-day slots and special menu kinds. Drives the public slot tabs.
+enum MenuSlot {
+  MORNING
+  AFTERNOON
+  EVENING
+  SPECIAL
+  SUNDAY_SPECIAL
+  FESTIVAL
+  LIMITED_TIME
+  SEASONAL
+}
+
+/// Categories are shared between the daily menu and the packaged product
+/// catalogue (laddus / namkeens), distinguished by this type.
+enum CategoryType {
+  MENU
+  PRODUCT
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  PREPARING
+  READY_FOR_PICKUP
+  COMPLETED
+  CANCELLED
+}
+
+enum RequestStatus {
+  NEW
+  REVIEWING
+  QUOTED
+  ACCEPTED
+  REJECTED
+  COMPLETED
+}
+
+enum Occasion {
+  WEDDING
+  BIRTHDAY
+  CORPORATE
+  FESTIVAL
+  RELIGIOUS
+  OTHER
+}
+
+enum DiscountType {
+  PERCENT
+  FLAT
+}
+
+enum StorageProvider {
+  LOCAL
+  CLOUDINARY
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ---------------------------------------------------------------------------
+// Staff, customers, auth
+// ---------------------------------------------------------------------------
+
+/// Staff/admin accounts. Customers are a separate model — a customer must
+/// never be able to escalate into the admin surface.
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  phone        String?
+  name         String
+  passwordHash String
+  role         Role     @default(STAFF)
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  refreshTokens RefreshToken[]
+  adminLogs     AdminLog[]
+  customer      Customer?
+
+  @@index([role])
+  @@map("users")
+}
+
+/// A customer record exists for every order, created by phone number even for
+/// guest checkout. If that person later registers, `userId` links the account
+/// to the existing record so their guest order history is preserved.
+model Customer {
+  id           String   @id @default(cuid())
+  name         String
+  phone        String   @unique
+  email        String?
+  passwordHash String?
+  addressNote  String?
+  isBlocked    Boolean  @default(false)
+  userId       String?  @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user       User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  orders     Order[]
+  favourites Favourite[]
+  reviews    Review[]
+  sessions   CustomerToken[]
+
+  @@index([phone])
+  @@map("customers")
+}
+
+/// Refresh tokens are stored hashed and rotated on every use, so a stolen
+/// database row cannot be replayed as a session.
+model RefreshToken {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  userId     String
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  userAgent  String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+/// Same mechanism as RefreshToken, for the customer-facing session.
+model CustomerToken {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  customerId String
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("customer_tokens")
+}
+
+model Favourite {
+  id         String   @id @default(cuid())
+  customerId String
+  menuItemId String?
+  productId  String?
+  createdAt  DateTime @default(now())
+
+  customer Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  menuItem MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  product  Product?  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, menuItemId])
+  @@unique([customerId, productId])
+  @@map("favourites")
+}
+
+// ---------------------------------------------------------------------------
+// Catalogue — categories, menu items, menus
+// ---------------------------------------------------------------------------
+
+model Category {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  description String?
+  image       String?
+  /// Optional pale background tint for the category card on the home page,
+  /// so the owner controls the palette rotation without a code change.
+  tintColor   String?
+  icon        String?
+  type        CategoryType @default(MENU)
+  sortOrder   Int          @default(0)
+  isActive    Boolean      @default(true)
+  isFeatured  Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  menuItems MenuItem[]
+  products  Product[]
+
+  @@index([type, isActive, sortOrder])
+  @@map("categories")
+}
+
+/// A reusable dish. Items are *not* owned by a single day's menu — they are
+/// composed into menus via MenuEntry, which is what makes "duplicate
+/// yesterday" and "schedule Sunday Special" a one-click operation.
+model MenuItem {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  description   String?
+  image         String?
+  categoryId    String?
+  price         Decimal  @db.Decimal(10, 2)
+  discountPrice Decimal? @db.Decimal(10, 2)
+  unitLabel     String?
+  isAvailable   Boolean  @default(true)
+  prepTimeMins  Int      @default(20)
+  isVeg         Boolean  @default(true)
+  isSpecial     Boolean  @default(false)
+  isFeatured    Boolean  @default(false)
+  tags          String[] @default([])
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  category   Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  entries    MenuEntry[]
+  orderItems OrderItem[]
+  favourites Favourite[]
+
+  @@index([isAvailable, isFeatured])
+  @@index([categoryId])
+  @@map("menu_items")
+}
+
+/// A published menu for a slot. `date` null means it recurs (optionally pinned
+/// to `dayOfWeek`); a date makes it a one-off, which is how future menus are
+/// scheduled. `publishAt` lets a menu go live automatically.
+model Menu {
+  id              String   @id @default(cuid())
+  title           String
+  subtitle        String?
+  slot            MenuSlot
+  date            DateTime? @db.Date
+  /// 0 = Sunday … 6 = Saturday. Set for recurring day-specific menus.
+  dayOfWeek       Int?
+  bannerImage     String?
+  /// Orders for this menu are refused after this time, e.g. "10:30".
+  orderCutoffTime String?
+  publishAt       DateTime?
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  entries MenuEntry[]
+
+  @@index([slot, isActive])
+  @@index([date])
+  @@map("menus")
+}
+
+/// Join of Menu <-> MenuItem, with a per-menu price override so the same dish
+/// can be priced differently as part of a festival menu.
+model MenuEntry {
+  id            String   @id @default(cuid())
+  menuId        String
+  menuItemId    String
+  priceOverride Decimal? @db.Decimal(10, 2)
+  isAvailable   Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  menu     Menu     @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@unique([menuId, menuItemId])
+  @@index([menuId, sortOrder])
+  @@map("menu_entries")
+}
+
+// ---------------------------------------------------------------------------
+// Packaged products — laddus, namkeens, festival boxes
+// ---------------------------------------------------------------------------
+
+model Product {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  description   String?
+  longDescription String?
+  images        String[] @default([])
+  categoryId    String?
+  price         Decimal  @db.Decimal(10, 2)
+  discountPrice Decimal? @db.Decimal(10, 2)
+  weightLabel   String?
+  weightGrams   Int?
+  /// When trackStock is true the product is hidden/marked out-of-stock once
+  /// stockQty hits zero. When false it is always orderable.
+  trackStock    Boolean  @default(false)
+  stockQty      Int      @default(0)
+  isVeg         Boolean  @default(true)
+  isActive      Boolean  @default(true)
+  isFeatured    Boolean  @default(false)
+  tags          String[] @default([])
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  category   Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  variants   ProductVariant[]
+  orderItems OrderItem[]
+  favourites Favourite[]
+
+  @@index([isActive, isFeatured])
+  @@index([categoryId])
+  @@map("products")
+}
+
+/// Weight options (250g / 500g / 1kg) with their own price and stock.
+model ProductVariant {
+  id            String   @id @default(cuid())
+  productId     String
+  label         String
+  weightGrams   Int?
+  price         Decimal  @db.Decimal(10, 2)
+  discountPrice Decimal? @db.Decimal(10, 2)
+  stockQty      Int      @default(0)
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@index([productId])
+  @@map("product_variants")
+}
+
+// ---------------------------------------------------------------------------
+// Pickup logistics
+// ---------------------------------------------------------------------------
+
+/// Pickup windows with a capacity cap, to stop everyone arriving at once.
+model PickupSlot {
+  id        String  @id @default(cuid())
+  label     String
+  startTime String
+  endTime   String
+  maxOrders Int     @default(0)
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  orders Order[]
+
+  @@map("pickup_slots")
+}
+
+// ---------------------------------------------------------------------------
+// Orders
+// ---------------------------------------------------------------------------
+
+model Order {
+  id           String      @id @default(cuid())
+  orderNo      String      @unique
+  customerId   String
+  status       OrderStatus @default(PENDING)
+  pickupDate   DateTime    @db.Date
+  pickupSlotId String?
+  /// Free-text fallback when the owner has not configured slots.
+  pickupTime   String?
+  subtotal     Decimal     @db.Decimal(10, 2)
+  discount     Decimal     @default(0) @db.Decimal(10, 2)
+  total        Decimal     @db.Decimal(10, 2)
+  couponId     String?
+  couponCode   String?
+  notes        String?
+  adminNotes   String?
+  /// Denormalised contact snapshot — the order slip must stay readable even if
+  /// the customer later changes their profile.
+  contactName  String
+  contactPhone String
+  contactEmail String?
+  acceptedAt   DateTime?
+  readyAt      DateTime?
+  completedAt  DateTime?
+  cancelledAt  DateTime?
+  cancelReason String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  customer   Customer    @relation(fields: [customerId], references: [id])
+  pickupSlot PickupSlot? @relation(fields: [pickupSlotId], references: [id], onDelete: SetNull)
+  coupon     Coupon?     @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  items      OrderItem[]
+
+  @@index([status, createdAt])
+  @@index([pickupDate])
+  @@index([customerId])
+  @@map("orders")
+}
+
+/// Snapshot line item. name/price/image are copied at order time; the nullable
+/// FKs exist only so reports can group by dish, never to read the price back.
+model OrderItem {
+  id               String  @id @default(cuid())
+  orderId          String
+  menuItemId       String?
+  productId        String?
+  productVariantId String?
+  nameSnapshot     String
+  imageSnapshot    String?
+  variantSnapshot  String?
+  unitPrice        Decimal @db.Decimal(10, 2)
+  quantity         Int
+  lineTotal        Decimal @db.Decimal(10, 2)
+
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem       MenuItem?       @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+  product        Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productVariant ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+// ---------------------------------------------------------------------------
+// Enquiries — bulk and fully custom orders
+// ---------------------------------------------------------------------------
+
+model BulkOrderRequest {
+  id            String        @id @default(cuid())
+  requestNo     String        @unique
+  name          String
+  phone         String
+  email         String?
+  occasion      Occasion      @default(OTHER)
+  occasionOther String?
+  peopleCount   Int?
+  requirements  String
+  preferredDate DateTime?     @db.Date
+  budget        Decimal?      @db.Decimal(10, 2)
+  instructions  String?
+  status        RequestStatus @default(NEW)
+  quotedAmount  Decimal?      @db.Decimal(10, 2)
+  adminNotes    String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([status, createdAt])
+  @@map("bulk_order_requests")
+}
+
+model CustomOrderRequest {
+  id            String        @id @default(cuid())
+  requestNo     String        @unique
+  name          String
+  phone         String
+  email         String?
+  itemName      String
+  description   String
+  ingredients   String?
+  quantity      String?
+  preferredDate DateTime?     @db.Date
+  preferredTime String?
+  budget        Decimal?      @db.Decimal(10, 2)
+  referenceImage String?
+  status        RequestStatus @default(NEW)
+  quotedAmount  Decimal?      @db.Decimal(10, 2)
+  adminNotes    String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([status, createdAt])
+  @@map("custom_order_requests")
+}
+
+// ---------------------------------------------------------------------------
+// Content the owner controls
+// ---------------------------------------------------------------------------
+
+/// Key/value JSON store for everything chrome-level: logo, site name, phones,
+/// WhatsApp, address, maps embed, socials, opening hours, hero copy, banners,
+/// footer text, SEO defaults. Grouped so the settings screen can tab them.
+model SiteSetting {
+  key       String   @id
+  value     Json
+  group     String   @default("general")
+  label     String?
+  updatedAt DateTime @updatedAt
+
+  @@index([group])
+  @@map("site_settings")
+}
+
+/// Every uploaded image, so the owner can reuse a photo instead of
+/// re-uploading it. Backs the ImagePicker.
+model MediaAsset {
+  id        String          @id @default(cuid())
+  url       String
+  publicId  String?
+  provider  StorageProvider @default(LOCAL)
+  alt       String?
+  folder    String          @default("general")
+  mimeType  String
+  sizeBytes Int
+  width     Int?
+  height    Int?
+  createdAt DateTime        @default(now())
+
+  @@index([folder, createdAt])
+  @@map("media_assets")
+}
+
+model Review {
+  id         String       @id @default(cuid())
+  customerId String?
+  authorName String
+  rating     Int
+  comment    String
+  image      String?
+  status     ReviewStatus @default(PENDING)
+  isFeatured Boolean      @default(false)
+  sortOrder  Int          @default(0)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([status, isFeatured])
+  @@map("reviews")
+}
+
+model Coupon {
+  id           String       @id @default(cuid())
+  code         String       @unique
+  description  String?
+  discountType DiscountType @default(PERCENT)
+  value        Decimal      @db.Decimal(10, 2)
+  minOrder     Decimal?     @db.Decimal(10, 2)
+  maxDiscount  Decimal?     @db.Decimal(10, 2)
+  usageLimit   Int?
+  usedCount    Int          @default(0)
+  perCustomerLimit Int?
+  startsAt     DateTime?
+  expiresAt    DateTime?
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  orders Order[]
+
+  @@index([isActive, expiresAt])
+  @@map("coupons")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String
+  title     String
+  body      String?
+  link      String?
+  meta      Json?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([isRead, createdAt])
+  @@map("notifications")
+}
+
+/// Append-only audit trail. Written for every admin mutation with a before /
+/// after diff, so a price change can always be traced to a person.
+model AdminLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  actorName String?
+  action    String
+  entity    String
+  entityId  String?
+  before    Json?
+  after     Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entity, createdAt])
+  @@index([userId])
+  @@map("admin_logs")
+}

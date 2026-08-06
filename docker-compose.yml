@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vkitchen-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vkitchen
+      POSTGRES_PASSWORD: vkitchen_dev_password
+      POSTGRES_DB: vkitchen
+    ports:
+      - "5433:5432"
+    volumes:
+      - vkitchen-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vkitchen -d vkitchen"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: vkitchen-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - vkitchen-redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  vkitchen-pgdata:
+  vkitchen-redisdata:

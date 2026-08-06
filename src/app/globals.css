@@ -1,0 +1,200 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   V-Kitchen design tokens
+   --------------------------------------------------------------------------
+   Every colour in the app resolves to one of these variables. Rebranding, or
+   adjusting the dark theme, is a change to this file alone — component code
+   never names a raw colour.
+   ========================================================================== */
+
+@layer base {
+  :root {
+    --radius: 0.875rem;
+
+    /* Surfaces */
+    --background: 40 25% 98%;          /* warm off-white page */
+    --foreground: 150 12% 14%;         /* near-black with a green cast */
+    --card: 0 0% 100%;
+    --card-foreground: 150 12% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 150 12% 14%;
+
+    /* Brand green — #2E7D32 */
+    --primary: 123 46% 34%;
+    --primary-foreground: 0 0% 100%;
+    /* Deep green used for the footer and the feature banner */
+    --primary-deep: 140 33% 22%;
+    --primary-deep-foreground: 40 30% 96%;
+
+    /* Neutral secondary surface */
+    --secondary: 40 20% 95%;
+    --secondary-foreground: 150 12% 20%;
+
+    /* Warm orange accent — chilli / star ratings / eyebrow labels */
+    --accent: 20 85% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --muted: 40 16% 94%;
+    --muted-foreground: 150 6% 42%;
+
+    --destructive: 0 72% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 62% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 30 40% 12%;
+
+    --border: 40 14% 89%;
+    --input: 40 14% 88%;
+    --ring: 123 46% 34%;
+
+    /* Pale section tints. The category-card rotation on the home page reads
+       these, and the owner can override any card's tint from /admin. */
+    --tint-green: 96 32% 92%;
+    --tint-cream: 40 55% 94%;
+    --tint-peach: 24 70% 93%;
+    --tint-sage: 130 18% 93%;
+  }
+
+  .dark {
+    --background: 150 12% 8%;
+    --foreground: 40 20% 94%;
+    --card: 150 10% 12%;
+    --card-foreground: 40 20% 94%;
+    --popover: 150 10% 12%;
+    --popover-foreground: 40 20% 94%;
+
+    /* Lifted for contrast against the dark surface — #2E7D32 fails AA here. */
+    --primary: 123 40% 52%;
+    --primary-foreground: 150 20% 8%;
+    --primary-deep: 140 25% 16%;
+    --primary-deep-foreground: 40 25% 94%;
+
+    --secondary: 150 8% 17%;
+    --secondary-foreground: 40 20% 92%;
+
+    --accent: 20 82% 60%;
+    --accent-foreground: 20 40% 10%;
+
+    --muted: 150 8% 17%;
+    --muted-foreground: 150 6% 64%;
+
+    --destructive: 0 62% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 50% 48%;
+    --success-foreground: 150 20% 8%;
+    --warning: 38 84% 56%;
+    --warning-foreground: 30 40% 10%;
+
+    --border: 150 8% 22%;
+    --input: 150 8% 24%;
+    --ring: 123 40% 52%;
+
+    --tint-green: 123 14% 15%;
+    --tint-cream: 40 10% 16%;
+    --tint-peach: 24 16% 16%;
+    --tint-sage: 130 10% 15%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Visible focus for keyboard users without adding a ring on mouse clicks. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  ::selection {
+    @apply bg-primary/20;
+  }
+
+  /* Respect the OS setting — no parallax or slide-ins for users who ask for
+     reduced motion. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Small uppercase label that sits above every section heading. */
+  .eyebrow {
+    @apply text-[0.7rem] font-bold uppercase tracking-[0.18em] text-primary;
+  }
+
+  .eyebrow-accent {
+    @apply text-[0.7rem] font-bold uppercase tracking-[0.18em] text-accent;
+  }
+
+  .section-heading {
+    @apply font-display text-3xl font-bold tracking-tight sm:text-4xl lg:text-[2.75rem] lg:leading-[1.1];
+  }
+
+  /* The rounded, generously padded band each home-page section sits in. */
+  .section-shell {
+    @apply mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Frosted surface used for the mobile nav sheet and sticky bars. */
+  .glass {
+    @apply bg-background/80 backdrop-blur-xl backdrop-saturate-150;
+  }
+
+  /* Shimmer used by every skeleton loader. */
+  .skeleton {
+    @apply relative overflow-hidden rounded-md bg-muted;
+  }
+  .skeleton::after {
+    content: "";
+    @apply absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-black/[0.05] to-transparent;
+  }
+  .dark .skeleton::after {
+    @apply via-white/[0.06];
+  }
+
+  /* Horizontal scrollers (slot tabs, category chips) without a visible bar. */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+  /* Clamp helpers for card descriptions. */
+  .line-clamp-2-safe {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
