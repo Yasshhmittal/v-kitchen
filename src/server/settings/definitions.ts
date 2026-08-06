@@ -40,6 +40,7 @@ export const SETTING_GROUPS = [
   { id: "brand", label: "Brand", description: "Name, logo and identity" },
   { id: "contact", label: "Contact & Pickup", description: "How customers reach and find you" },
   { id: "hours", label: "Opening Hours", description: "When you are open and taking orders" },
+  { id: "navigation", label: "Navigation", description: "Links in the top menu bar" },
   { id: "home", label: "Home Page", description: "Hero, banners and section headings" },
   { id: "ordering", label: "Ordering Rules", description: "Cut-offs, lead time and limits" },
   { id: "social", label: "Social Links", description: "Your profiles" },
@@ -175,6 +176,23 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
     label: "Hours note",
     editor: "text",
     defaultValue: "Closed on public holidays. Follow us for updates.",
+  },
+
+  // ---- Navigation --------------------------------------------------------
+  {
+    key: "nav.links",
+    group: "navigation",
+    label: "Top navigation links",
+    help: "Shown in the header, in this order.",
+    editor: "json",
+    defaultValue: [
+      { label: "Home", href: "/" },
+      { label: "Menu", href: "/menu" },
+      { label: "Specials", href: "/specials" },
+      { label: "Laddus & Namkeen", href: "/products" },
+      { label: "Bulk Orders", href: "/bulk-order" },
+      { label: "Contact", href: "/contact" },
+    ],
   },
 
   // ---- Home page ---------------------------------------------------------
