@@ -70,7 +70,12 @@ export interface PageMeta {
   totalPages: number;
 }
 
-export function ok<T>(data: T, meta?: Record<string, unknown>, init?: ResponseInit) {
+/**
+ * `meta` is generic over any object rather than `Record<string, unknown>` so
+ * interfaces like `PageMeta` — which have no index signature — can be passed
+ * straight through.
+ */
+export function ok<T, M extends object = PageMeta>(data: T, meta?: M, init?: ResponseInit) {
   return NextResponse.json(meta ? { data, meta } : { data }, init);
 }
 
