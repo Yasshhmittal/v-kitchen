@@ -1,11 +1,22 @@
-import type { Category, MenuItem, Prisma, Product, ProductVariant, Review } from "@prisma/client";
+import type {
+  Category,
+  MenuItem,
+  Order,
+  OrderItem,
+  PickupSlot,
+  Prisma,
+  Product,
+  ProductVariant,
+  Review,
+} from "@prisma/client";
 
 import { entryPrice, isPastCutoff, type MenuWithEntries } from "@/server/services/menu.service";
-import { effectivePrice, toNumber } from "@/lib/format";
+import { effectivePrice, formatTime24to12, toNumber } from "@/lib/format";
 import type {
   CategoryView,
   MenuItemView,
   MenuView,
+  OrderView,
   ProductVariantView,
   ProductView,
   ReviewView,
@@ -140,6 +151,48 @@ export function toReviewView(review: Review): ReviewView {
     comment: review.comment,
     image: review.image,
     createdAt: review.createdAt.toISOString(),
+  };
+}
+
+/**
+ * An order as the customer sees it — on the confirmation page, the track page
+ * and in their account history.
+ *
+ * Every line reads from its snapshot columns, never from the linked menu item
+ * or product, so an order slip printed today still matches what was agreed.
+ */
+export function toOrderView(
+  order: Order & { items: OrderItem[]; pickupSlot?: PickupSlot | null },
+): OrderView {
+  return {
+    id: order.id,
+    orderNo: order.orderNo,
+    status: order.status,
+    pickupDate: order.pickupDate.toISOString(),
+    pickupWindow: order.pickupSlot
+      ? `${formatTime24to12(order.pickupSlot.startTime)} – ${formatTime24to12(order.pickupSlot.endTime)}`
+      : order.pickupTime
+        ? formatTime24to12(order.pickupTime)
+        : null,
+    subtotal: toNumber(order.subtotal),
+    discount: toNumber(order.discount),
+    total: toNumber(order.total),
+    couponCode: order.couponCode,
+    notes: order.notes,
+    contactName: order.contactName,
+    contactPhone: order.contactPhone,
+    contactEmail: order.contactEmail,
+    cancelReason: order.cancelReason,
+    placedAt: order.createdAt.toISOString(),
+    items: order.items.map((item) => ({
+      id: item.id,
+      name: item.nameSnapshot,
+      variantLabel: item.variantSnapshot,
+      image: item.imageSnapshot,
+      unitPrice: toNumber(item.unitPrice),
+      quantity: item.quantity,
+      lineTotal: toNumber(item.lineTotal),
+    })),
   };
 }
 

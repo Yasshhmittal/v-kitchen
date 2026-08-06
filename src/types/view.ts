@@ -1,4 +1,4 @@
-import type { MenuSlot } from "@prisma/client";
+import type { MenuSlot, OrderStatus } from "@prisma/client";
 
 /**
  * Plain shapes handed to client components.
@@ -96,4 +96,35 @@ export interface PickupSlotView {
   /** false when the slot is full for the chosen date. */
   available: boolean;
   remaining: number | null;
+}
+
+export interface OrderItemView {
+  id: string;
+  /** Copied at order time — never re-read from the live item. */
+  name: string;
+  variantLabel: string | null;
+  image: string | null;
+  unitPrice: number;
+  quantity: number;
+  lineTotal: number;
+}
+
+export interface OrderView {
+  id: string;
+  orderNo: string;
+  status: OrderStatus;
+  pickupDate: string;
+  /** Resolved slot window, or the free-text time when no slots are configured. */
+  pickupWindow: string | null;
+  subtotal: number;
+  discount: number;
+  total: number;
+  couponCode: string | null;
+  notes: string | null;
+  contactName: string;
+  contactPhone: string;
+  contactEmail: string | null;
+  cancelReason: string | null;
+  placedAt: string;
+  items: OrderItemView[];
 }
