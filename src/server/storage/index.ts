@@ -188,7 +188,13 @@ class CloudinaryStorageProvider implements StorageProvider {
     const signature = await this.sign({ folder: cloudFolder, timestamp });
 
     const body = new FormData();
-    body.append("file", new Blob([bytes], { type: mimeType }), safeFilename(mimeType));
+    // `bytes` is a Node Buffer, whose backing store TS types as possibly
+    // shared; copying into a plain Uint8Array satisfies BlobPart.
+    body.append(
+      "file",
+      new Blob([new Uint8Array(bytes)], { type: mimeType }),
+      safeFilename(mimeType),
+    );
     body.append("api_key", this.apiKey);
     body.append("timestamp", timestamp);
     body.append("folder", cloudFolder);

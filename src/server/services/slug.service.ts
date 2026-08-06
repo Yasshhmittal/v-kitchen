@@ -21,14 +21,26 @@ export async function uniqueSlug(
   for (let attempt = 0; attempt < 50; attempt += 1) {
     const candidate = attempt === 0 ? base : `${base}-${attempt + 1}`;
 
-    const existing = await (
-      prisma[model] as {
-        findUnique(args: { where: { slug: string }; select: { id: true } }): Promise<{ id: string } | null>;
-      }
-    ).findUnique({ where: { slug: candidate }, select: { id: true } });
+    // Switched rather than cast: the three delegates have incompatible
+    // argument types, so a union cast doesn't typecheck.
+    const existing = await findBySlug(model, candidate);
 
     if (!existing || existing.id === excludeId) return candidate;
   }
 
   throw ApiError.conflict("Couldn't generate a unique web address for that name.");
+}
+
+function findBySlug(model: SluggedModel, slug: string): Promise<{ id: string } | null> {
+  const where = { slug };
+  const select = { id: true } as const;
+
+  switch (model) {
+    case "menuItem":
+      return prisma.menuItem.findUnique({ where, select });
+    case "product":
+      return prisma.product.findUnique({ where, select });
+    case "category":
+      return prisma.category.findUnique({ where, select });
+  }
 }
