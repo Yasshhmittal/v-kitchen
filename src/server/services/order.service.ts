@@ -193,6 +193,20 @@ async function resolveCoupon(
   return { couponId: coupon.id, couponCode: coupon.code, discount };
 }
 
+/**
+ * Guest checkout is on by default, but the owner can require an account from
+ * /admin/settings. Enforced here rather than only in the checkout UI: hiding a
+ * form is not a rule, and this is the one path every order goes through.
+ */
+async function assertLoginRule(customerId?: string): Promise<void> {
+  if (customerId) return;
+
+  const settings = await getSettings();
+  if (settingBool(settings, "ordering.requireLogin", false)) {
+    throw ApiError.unauthenticated("Please sign in to place an order.");
+  }
+}
+
 /** Check the pickup date/slot against the owner's ordering rules. */
 async function validatePickup(input: OrderCreateInput, subtotal: number): Promise<void> {
   const settings = await getSettings();
@@ -266,6 +280,7 @@ export async function createOrder(
 ): Promise<Order & { items: Array<{ nameSnapshot: string; quantity: number }> }> {
   const { lines, subtotal } = await priceOrderLines(input.items);
   await validatePickup(input, subtotal);
+  await assertLoginRule(customerId);
 
   const { couponId, couponCode, discount } = await resolveCoupon(input.couponCode, subtotal);
   const total = round2(subtotal - discount);

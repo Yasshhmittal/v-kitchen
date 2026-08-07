@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { CheckoutForm } from "@/components/site/checkout-form";
 import { PageHeader } from "@/components/site/page-header";
 import { prisma } from "@/lib/prisma";
 import { getCustomerSession } from "@/server/auth/session";
-import { getSettings, settingText } from "@/server/services/settings.service";
+import {
+  getSettings,
+  isLoginRequired,
+  settingText,
+} from "@/server/services/settings.service";
 
 /**
  * Checkout.
@@ -22,6 +27,13 @@ export const metadata: Metadata = {
 
 export default async function CheckoutPage() {
   const session = await getCustomerSession();
+
+  // When the owner has switched guest checkout off, send guests to sign in
+  // before they fill anything in — the order API would refuse it anyway, and
+  // finding that out after typing an address is the worst time to learn it.
+  if (!session && (await isLoginRequired())) {
+    redirect(`/account/login?next=${encodeURIComponent("/checkout")}`);
+  }
 
   const [settings, customer] = await Promise.all([
     getSettings(),

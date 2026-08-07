@@ -466,6 +466,7 @@ export const reorderSchema = z.object({
 export type AdminLoginInput = z.infer<typeof adminLoginSchema>;
 export type CustomerRegisterInput = z.infer<typeof customerRegisterSchema>;
 export type CustomerLoginInput = z.infer<typeof customerLoginSchema>;
+export type CustomerProfileInput = z.infer<typeof customerProfileSchema>;
 export type CategoryInput = z.infer<typeof categorySchema>;
 export type MenuItemInput = z.infer<typeof menuItemSchema>;
 export type MenuInput = z.infer<typeof menuSchema>;

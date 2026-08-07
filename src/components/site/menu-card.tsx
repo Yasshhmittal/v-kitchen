@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Clock, UtensilsCrossed } from "lucide-react";
 
 import { AddToCartButton } from "./add-to-cart-button";
+import { FavouriteButton } from "./favourite-button";
 import { Badge } from "@/components/ui/badge";
 import { useCurrency } from "@/hooks/use-site-config";
 import { cn } from "@/lib/cn";
@@ -58,6 +59,12 @@ export function MenuCard({
             </Badge>
           )}
         </div>
+
+        <FavouriteButton
+          name={item.name}
+          target={{ menuItemId: item.id }}
+          className="absolute bottom-3 right-3"
+        />
 
         {/* The green/red square Indian veg-mark. */}
         <span

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Cookie } from "lucide-react";
 
 import { AddToCartButton } from "./add-to-cart-button";
+import { FavouriteButton } from "./favourite-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCurrency } from "@/hooks/use-site-config";
@@ -28,7 +29,7 @@ export function ProductCard({ product, className }: { product: ProductView; clas
   return (
     <article
       className={cn(
-        "group flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-lift",
+        "group relative flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-lift",
         soldOut && "opacity-70",
         className,
       )}
@@ -59,6 +60,13 @@ export function ProductCard({ product, className }: { product: ProductView; clas
           )}
         </div>
       </Link>
+
+      {/* Outside the <Link>, or saving would navigate to the product page. */}
+      <FavouriteButton
+        name={product.name}
+        target={{ productId: product.id }}
+        className="absolute right-3 top-3"
+      />
 
       <div className="flex flex-1 flex-col p-4">
         <h3 className="font-semibold leading-tight">

@@ -73,6 +73,17 @@ export function settingList<T>(settings: SettingsMap, key: string, fallback: T[]
   return Array.isArray(value) ? (value as T[]) : fallback;
 }
 
+/**
+ * Whether the owner requires an account to place an order.
+ *
+ * Guest checkout is on by default and this setting flips it off. Read by the
+ * checkout page and enforced again in the order service, so hiding the form is
+ * never the only thing standing between a guest and an order.
+ */
+export async function isLoginRequired(): Promise<boolean> {
+  return settingBool(await getSettings(), "ordering.requireLogin", false);
+}
+
 /** Settings for one tab of the admin settings screen. */
 export async function getSettingsByGroup(group: SettingGroup) {
   const settings = await getSettings();

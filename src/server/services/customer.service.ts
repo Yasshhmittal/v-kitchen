@@ -3,7 +3,11 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/server/api/response";
 import { fakeVerify, hashPassword, verifyPassword } from "@/server/auth/password";
-import type { CustomerLoginInput, CustomerRegisterInput } from "@/server/validation/schemas";
+import type {
+  CustomerLoginInput,
+  CustomerProfileInput,
+  CustomerRegisterInput,
+} from "@/server/validation/schemas";
 
 /**
  * Customer accounts.
@@ -95,6 +99,26 @@ export async function getCustomerFavourites(customerId: string) {
   };
 }
 
+/**
+ * Just the ids, for filling in the hearts on a listing page.
+ *
+ * The full favourites payload is a menu's worth of rows; the cards only need to
+ * know which of them are already saved.
+ */
+export async function getFavouriteIds(
+  customerId: string,
+): Promise<{ menuItemIds: string[]; productIds: string[] }> {
+  const rows = await prisma.favourite.findMany({
+    where: { customerId },
+    select: { menuItemId: true, productId: true },
+  });
+
+  return {
+    menuItemIds: rows.map((row) => row.menuItemId).filter((id): id is string => id !== null),
+    productIds: rows.map((row) => row.productId).filter((id): id is string => id !== null),
+  };
+}
+
 /** Add or remove in one call — the heart button has no idea which it is. */
 export async function toggleFavourite(
   customerId: string,
@@ -123,6 +147,48 @@ export async function toggleFavourite(
     },
   });
   return { favourited: true };
+}
+
+export type CustomerProfile = {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  addressNote: string | null;
+};
+
+const profileSelect = {
+  id: true,
+  name: true,
+  phone: true,
+  email: true,
+  addressNote: true,
+} as const;
+
+export async function getCustomerProfile(customerId: string): Promise<CustomerProfile | null> {
+  return prisma.customer.findUnique({ where: { id: customerId }, select: profileSelect });
+}
+
+/**
+ * The customer editing their own details.
+ *
+ * `phone` is not a parameter and never will be: it is the login identity and
+ * the key past orders are filed under, so letting it be typed over would hand
+ * one person's history to another. Changing it is a phone call to the kitchen.
+ */
+export async function updateCustomerProfile(
+  customerId: string,
+  input: CustomerProfileInput,
+): Promise<CustomerProfile> {
+  return prisma.customer.update({
+    where: { id: customerId },
+    data: {
+      name: input.name,
+      email: input.email ?? null,
+      addressNote: input.addressNote ?? null,
+    },
+    select: profileSelect,
+  });
 }
 
 /** Phone numbers are the login identity, so store them one way only. */
