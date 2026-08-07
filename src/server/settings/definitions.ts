@@ -46,6 +46,11 @@ export const SETTING_GROUPS = [
   { id: "social", label: "Social Links", description: "Your profiles" },
   { id: "seo", label: "SEO", description: "Search and share previews" },
   { id: "footer", label: "Footer", description: "Footer copy and newsletter" },
+  {
+    id: "pages",
+    label: "Page Content",
+    description: "About, contact, enquiry and legal page copy",
+  },
 ] as const;
 
 export type SettingGroup = (typeof SETTING_GROUPS)[number]["id"];
@@ -568,6 +573,226 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
       { label: "Track Order", href: "/track" },
       { label: "Privacy Policy", href: "/privacy" },
       { label: "Terms of Service", href: "/terms" },
+    ],
+  },
+
+  // ---- Page content ------------------------------------------------------
+  // Long-form copy for the static-looking pages. Stored here rather than in
+  // the components so the owner can rewrite any of it from the dashboard.
+  {
+    key: "pages.about.eyebrow",
+    group: "pages",
+    label: "About — eyebrow",
+    editor: "text",
+    defaultValue: "Our story",
+  },
+  {
+    key: "pages.about.title",
+    group: "pages",
+    label: "About — heading",
+    editor: "text",
+    defaultValue: "Cooked the way it is at home",
+  },
+  {
+    key: "pages.about.lead",
+    group: "pages",
+    label: "About — intro",
+    editor: "textarea",
+    defaultValue:
+      "A small kitchen, a short menu that changes through the day, and food made in batches small enough to still taste like someone made it for you.",
+  },
+  {
+    key: "pages.about.image",
+    group: "pages",
+    label: "About — photo",
+    editor: "image",
+    defaultValue: "",
+  },
+  {
+    key: "pages.about.body",
+    group: "pages",
+    label: "About — sections",
+    help: "Each block becomes a heading with a paragraph.",
+    editor: "json",
+    defaultValue: [
+      {
+        heading: "Made fresh, in small batches",
+        text: "Nothing sits overnight. The morning menu is cooked in the morning, the evening menu in the evening, and when a dish runs out for the day, it's gone until tomorrow.",
+      },
+      {
+        heading: "Laddus and namkeens, all year",
+        text: "Our sweets and savouries are made in the same kitchen, packed the day they're made, and sold by weight so you can take exactly as much as you need.",
+      },
+      {
+        heading: "Pickup only, and that's on purpose",
+        text: "We don't deliver. Food that travels for half an hour is not the food we cooked, so you order online, we tell you when it's ready, and you collect it warm.",
+      },
+      {
+        heading: "Bulk and custom orders welcome",
+        text: "Weddings, offices, festivals and family functions — tell us what you need and by when, and we'll come back with a plan and a price.",
+      },
+    ],
+  },
+  {
+    key: "pages.about.stats",
+    group: "pages",
+    label: "About — highlight figures",
+    editor: "json",
+    defaultValue: [
+      { value: "3", label: "Fresh menus a day" },
+      { value: "100%", label: "Vegetarian kitchen" },
+      { value: "0", label: "Preservatives added" },
+    ],
+  },
+  {
+    key: "pages.contact.eyebrow",
+    group: "pages",
+    label: "Contact — eyebrow",
+    editor: "text",
+    defaultValue: "Say hello",
+  },
+  {
+    key: "pages.contact.title",
+    group: "pages",
+    label: "Contact — heading",
+    editor: "text",
+    defaultValue: "Come and find us",
+  },
+  {
+    key: "pages.contact.lead",
+    group: "pages",
+    label: "Contact — intro",
+    editor: "textarea",
+    defaultValue:
+      "Call for anything urgent, or drop us a message and we'll get back to you the same day.",
+  },
+  {
+    key: "pages.bulk.eyebrow",
+    group: "pages",
+    label: "Bulk orders — eyebrow",
+    editor: "text",
+    defaultValue: "Feeding a crowd",
+  },
+  {
+    key: "pages.bulk.title",
+    group: "pages",
+    label: "Bulk orders — heading",
+    editor: "text",
+    defaultValue: "Bulk & catering orders",
+  },
+  {
+    key: "pages.bulk.lead",
+    group: "pages",
+    label: "Bulk orders — intro",
+    editor: "textarea",
+    defaultValue:
+      "Tell us the occasion, the headcount and the date. We'll put together a spread and send you a quote — usually within a day.",
+  },
+  {
+    key: "pages.bulk.points",
+    group: "pages",
+    label: "Bulk orders — what to expect",
+    editor: "json",
+    defaultValue: [
+      { heading: "Any size", text: "From a family lunch for twenty to a function for several hundred." },
+      { heading: "A written quote", text: "Itemised, with no obligation, before anything is cooked." },
+      { heading: "Notice helps", text: "Two or three days is comfortable; ask anyway if it's sooner." },
+    ],
+  },
+  {
+    key: "pages.custom.eyebrow",
+    group: "pages",
+    label: "Custom orders — eyebrow",
+    editor: "text",
+    defaultValue: "Made your way",
+  },
+  {
+    key: "pages.custom.title",
+    group: "pages",
+    label: "Custom orders — heading",
+    editor: "text",
+    defaultValue: "Ask for something special",
+  },
+  {
+    key: "pages.custom.lead",
+    group: "pages",
+    label: "Custom orders — intro",
+    editor: "textarea",
+    defaultValue:
+      "Sugar-free sweets, a jain thali, a gift box, a dish the way your grandmother made it — describe it and we'll tell you whether we can.",
+  },
+  {
+    key: "pages.privacy.title",
+    group: "pages",
+    label: "Privacy policy — heading",
+    editor: "text",
+    defaultValue: "Privacy Policy",
+  },
+  {
+    key: "pages.privacy.body",
+    group: "pages",
+    label: "Privacy policy — sections",
+    editor: "json",
+    defaultValue: [
+      {
+        heading: "What we collect",
+        text: "When you place an order we store your name, phone number and, if you give it, your email address, along with the order itself. If you create an account we also store a hashed version of your password — never the password itself.",
+      },
+      {
+        heading: "Why we collect it",
+        text: "Purely to prepare your order, contact you about it, and show you your own order history. We do not build advertising profiles.",
+      },
+      {
+        heading: "Who we share it with",
+        text: "Nobody. We do not sell or rent your details, and we don't pass them to third parties for marketing.",
+      },
+      {
+        heading: "Cookies",
+        text: "We set a small number of cookies to keep you signed in and to remember your cart. There are no third-party advertising or tracking cookies.",
+      },
+      {
+        heading: "Your choices",
+        text: "Ask us and we'll tell you what we hold about you, correct it, or delete your account. Order records may be kept where we're required to for accounting.",
+      },
+    ],
+  },
+  {
+    key: "pages.terms.title",
+    group: "pages",
+    label: "Terms — heading",
+    editor: "text",
+    defaultValue: "Terms of Service",
+  },
+  {
+    key: "pages.terms.body",
+    group: "pages",
+    label: "Terms — sections",
+    editor: "json",
+    defaultValue: [
+      {
+        heading: "Orders and confirmation",
+        text: "Placing an order online is a request, not a completed sale. An order is confirmed once we accept it, and you can check its progress from the track page at any time.",
+      },
+      {
+        heading: "Pickup only",
+        text: "All orders are collected in person at the address shown on this site. We do not deliver. Please collect within your chosen window so the food is at its best.",
+      },
+      {
+        heading: "Payment",
+        text: "Payment is taken at the counter when you collect. Prices shown online are what you pay unless we agree a change with you first.",
+      },
+      {
+        heading: "Availability",
+        text: "Menus change through the day and items are cooked in limited quantities. If something sells out after you order, we'll call you and either substitute it or refund it.",
+      },
+      {
+        heading: "Cancellations",
+        text: "Let us know as early as you can. We can usually cancel an order that hasn't been cooked yet; bulk and custom orders may involve costs already incurred.",
+      },
+      {
+        heading: "Allergies",
+        text: "Tell us about allergies in the notes and we'll do our best, but ours is a shared kitchen and we cannot guarantee any dish is free of traces.",
+      },
     ],
   },
 ];

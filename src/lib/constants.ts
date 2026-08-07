@@ -1,4 +1,4 @@
-import type { MenuSlot, OrderStatus, RequestStatus, Role } from "@prisma/client";
+import type { MenuSlot, Occasion, OrderStatus, RequestStatus, Role } from "@prisma/client";
 
 /**
  * Presentation metadata for enum values.
@@ -100,6 +100,15 @@ export const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   READY_FOR_PICKUP: ["COMPLETED", "CANCELLED"],
   COMPLETED: [],
   CANCELLED: [],
+};
+
+export const OCCASION_META: Record<Occasion, { label: string }> = {
+  WEDDING: { label: "Wedding" },
+  BIRTHDAY: { label: "Birthday" },
+  CORPORATE: { label: "Corporate / office" },
+  FESTIVAL: { label: "Festival" },
+  RELIGIOUS: { label: "Religious function" },
+  OTHER: { label: "Something else" },
 };
 
 export const REQUEST_STATUS_META: Record<RequestStatus, { label: string }> = {
