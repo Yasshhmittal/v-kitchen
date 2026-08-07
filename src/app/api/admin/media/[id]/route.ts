@@ -1,5 +1,6 @@
 import { ok, noContent, route } from "@/server/api/response";
 import { requireAdmin, auditLog } from "@/server/api/guards";
+import { assertCsrf } from "@/server/api/csrf";
 import { updateMediaAlt, deleteMedia } from "@/server/services/media.service";
 import { mediaUpdateSchema } from "@/server/validation/schemas";
 
@@ -10,6 +11,7 @@ import { mediaUpdateSchema } from "@/server/validation/schemas";
  * the old one and uploading a new one, which keeps the media table clean.
  */
 export const PATCH = route(async (request: Request, { params }: { params: Promise<{ id: string }> }) => {
+  await assertCsrf(request);
   const session = await requireAdmin("media.manage");
   const { id } = await params;
 
@@ -36,6 +38,7 @@ export const PATCH = route(async (request: Request, { params }: { params: Promis
  * what needs updating first.
  */
 export const DELETE = route(async (request: Request, { params }: { params: Promise<{ id: string }> }) => {
+  await assertCsrf(request);
   const session = await requireAdmin("media.manage");
   const { id } = await params;
 

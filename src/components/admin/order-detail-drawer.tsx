@@ -72,8 +72,12 @@ export function OrderDetailDrawer({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <SheetContent>
-          <div className="flex h-full items-center justify-center">
-            <p className="text-sm text-muted-foreground">Loading order…</p>
+          <div className="flex h-full items-center justify-center px-6">
+            <p className="text-sm text-muted-foreground">
+              {detailQuery.error instanceof Error
+                ? detailQuery.error.message
+                : "Loading order…"}
+            </p>
           </div>
         </SheetContent>
       </Dialog>
@@ -86,7 +90,7 @@ export function OrderDetailDrawer({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <SheetContent>
-        <div className="flex h-full flex-col">
+        <div className="flex h-full flex-col px-6 pb-6 pt-6">
           {/* Header */}
           <div className="border-b pb-4">
             <div className="flex items-start justify-between gap-4">
@@ -272,31 +276,73 @@ export function OrderDetailDrawer({
               <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Move to
               </p>
-              <div className="flex flex-wrap gap-2">
-                {nextStatuses.map((status) => {
-                  const targetMeta = ORDER_STATUS_META[status];
-                  return (
+
+              {actionError && (
+                <p className="mb-3 rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                  {actionError}
+                </p>
+              )}
+
+              {cancelling ? (
+                <div className="space-y-3">
+                  <Field label="Reason for cancellation (shown to the customer)" required>
+                    <Textarea
+                      value={cancelReason}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                      placeholder="e.g. customer asked to cancel, out of stock…"
+                      rows={2}
+                      maxLength={500}
+                    />
+                  </Field>
+                  <div className="flex gap-2">
                     <Button
-                      key={status}
-                      variant={status === "CANCELLED" ? "destructive" : "default"}
+                      variant="destructive"
+                      size="sm"
+                      disabled={statusMutation.isPending || cancelReason.trim().length === 0}
+                      onClick={() =>
+                        statusMutation.mutate({ status: "CANCELLED", reason: cancelReason.trim() })
+                      }
+                    >
+                      {statusMutation.isPending ? "Cancelling…" : "Confirm cancellation"}
+                    </Button>
+                    <Button
+                      variant="outline"
                       size="sm"
                       disabled={statusMutation.isPending}
                       onClick={() => {
-                        if (status === "CANCELLED") {
-                          const reason = prompt(
-                            "Reason for cancellation (shown to the customer):",
-                          );
-                          if (reason) statusMutation.mutate({ status, reason });
-                        } else {
-                          statusMutation.mutate({ status });
-                        }
+                        setCancelling(false);
+                        setCancelReason("");
+                        setActionError(null);
                       }}
                     >
-                      {targetMeta.label}
+                      Back
                     </Button>
-                  );
-                })}
-              </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {nextStatuses.map((status) => {
+                    const targetMeta = ORDER_STATUS_META[status];
+                    return (
+                      <Button
+                        key={status}
+                        variant={status === "CANCELLED" ? "destructive" : "default"}
+                        size="sm"
+                        disabled={statusMutation.isPending}
+                        onClick={() => {
+                          if (status === "CANCELLED") {
+                            setCancelling(true);
+                          } else {
+                            statusMutation.mutate({ status });
+                          }
+                        }}
+                      >
+                        {targetMeta.label}
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>

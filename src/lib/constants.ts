@@ -111,14 +111,31 @@ export const OCCASION_META: Record<Occasion, { label: string }> = {
   OTHER: { label: "Something else" },
 };
 
-export const REQUEST_STATUS_META: Record<RequestStatus, { label: string }> = {
-  NEW: { label: "New" },
-  REVIEWING: { label: "Reviewing" },
-  QUOTED: { label: "Quoted" },
-  ACCEPTED: { label: "Accepted" },
-  REJECTED: { label: "Rejected" },
-  COMPLETED: { label: "Completed" },
+export const REQUEST_STATUS_META: Record<
+  RequestStatus,
+  { label: string; tone: "neutral" | "info" | "warning" | "success" | "danger" }
+> = {
+  NEW: { label: "New", tone: "warning" },
+  REVIEWING: { label: "Reviewing", tone: "info" },
+  QUOTED: { label: "Quoted", tone: "info" },
+  ACCEPTED: { label: "Accepted", tone: "success" },
+  REJECTED: { label: "Rejected", tone: "danger" },
+  COMPLETED: { label: "Completed", tone: "success" },
 };
+
+/**
+ * An enquiry is a conversation, so the owner can move it anywhere except back
+ * out of a closed state — reopening a rejected enquiry would misrepresent what
+ * the customer was already told.
+ */
+export const REQUEST_STATUS_FLOW: RequestStatus[] = [
+  "NEW",
+  "REVIEWING",
+  "QUOTED",
+  "ACCEPTED",
+  "REJECTED",
+  "COMPLETED",
+];
 
 export const ROLE_META: Record<Role, { label: string; description: string }> = {
   OWNER: {

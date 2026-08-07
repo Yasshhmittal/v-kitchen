@@ -205,8 +205,7 @@ export default function OrdersPage() {
         error={listQuery.error instanceof Error ? listQuery.error.message : undefined}
         onRetry={() => listQuery.refetch()}
         onRowClick={(row) => {
-          // TODO: open detail drawer
-          console.log("Open order", row.orderNo);
+          setOpenOrderId(row.id);
         }}
         search={search}
         onSearchChange={(value) => {
@@ -230,6 +229,14 @@ export default function OrdersPage() {
             ? "Orders will appear here once they move into this status."
             : "Orders placed through the site will appear here."
         }
+      />
+
+      <OrderDetailDrawer
+        orderId={openOrderId}
+        open={Boolean(openOrderId)}
+        onOpenChange={(open) => {
+          if (!open) setOpenOrderId(null);
+        }}
       />
     </div>
   );

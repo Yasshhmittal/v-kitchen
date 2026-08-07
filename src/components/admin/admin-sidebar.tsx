@@ -10,7 +10,6 @@ import {
   Package,
   Tags,
   PartyPopper,
-  ChefHat,
   Users,
   Settings,
   UserCog,
@@ -68,16 +67,12 @@ const SECTIONS: NavSection[] = [
   {
     title: "Enquiries",
     items: [
+      // Bulk and custom enquiries share one screen: the job is the same, and
+      // tabs there beat two near-identical sidebar entries.
       {
-        href: "/admin/bulk-orders",
-        label: "Bulk orders",
+        href: "/admin/enquiries",
+        label: "Enquiries",
         icon: PartyPopper,
-        permission: "requests.view",
-      },
-      {
-        href: "/admin/custom-orders",
-        label: "Custom orders",
-        icon: ChefHat,
         permission: "requests.view",
       },
       { href: "/admin/customers", label: "Customers", icon: Users, permission: "customers.view" },

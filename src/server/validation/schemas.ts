@@ -473,6 +473,7 @@ export type ProductInput = z.infer<typeof productSchema>;
 export type OrderCreateInput = z.infer<typeof orderCreateSchema>;
 export type BulkOrderInput = z.infer<typeof bulkOrderSchema>;
 export type CustomOrderInput = z.infer<typeof customOrderSchema>;
+export type RequestStatusUpdateInput = z.infer<typeof requestStatusUpdateSchema>;
 export type CouponInput = z.infer<typeof couponSchema>;
 export type UserCreateInput = z.infer<typeof userCreateSchema>;
 export type PickupSlotInput = z.infer<typeof pickupSlotSchema>;

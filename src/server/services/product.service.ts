@@ -168,7 +168,6 @@ export async function updateProduct(
 
 /**
  * Delete a product.
- *
  * Refused once it has been ordered: the order lines keep their own name and
  * price snapshot, but the reporting FK would be lost. Deactivating instead
  * keeps history intact and takes it off the site just the same.
