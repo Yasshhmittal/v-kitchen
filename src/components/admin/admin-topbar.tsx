@@ -3,14 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Menu, User, Store, X } from "lucide-react";
+import { LogOut, Menu, User, Store } from "lucide-react";
 import type { Role } from "@prisma/client";
 
 import { cn } from "@/lib/cn";
 import { api } from "@/lib/api-client";
 import { can } from "@/server/auth/rbac";
 import { ROLE_META } from "@/lib/constants";
-import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/shared/providers";
 import {
   DropdownMenu,

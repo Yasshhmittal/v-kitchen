@@ -62,6 +62,8 @@ export interface ImagePickerProps {
   defaultFolder?: string;
   /** Disabled state. */
   disabled?: boolean;
+  /** Extra classes on the wrapping field — used for grid spans in forms. */
+  className?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -86,6 +88,7 @@ export function ImagePicker({
   error,
   defaultFolder = "general",
   disabled = false,
+  className,
 }: ImagePickerProps) {
   const urls = multiple
     ? (Array.isArray(value) ? value : value ? [value] : ([] as string[]))
@@ -94,7 +97,7 @@ export function ImagePicker({
       : ([] as string[]);
 
   return (
-    <Field label={label} help={help} error={error}>
+    <Field label={label} help={help} error={error} className={className}>
       <div className="flex flex-wrap gap-3">
         {!disabled && (
           <LibraryDialog
