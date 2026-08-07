@@ -31,19 +31,38 @@ interface RequestOptions extends Omit<RequestInit, "body"> {
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return (await requestFull<T>(path, options)).data;
+}
+
+export interface PageMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+/**
+ * Like `request`, but keeps `meta` as well as `data` — list endpoints return
+ * pagination there and the caller usually needs both.
+ */
+async function requestFull<T, M = PageMeta>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<{ data: T; meta?: M }> {
   const { body, json = true, headers, ...rest } = options;
 
   const response = await fetch(path, {
     ...rest,
     headers: {
       ...(json && body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...csrfHeader(),
       ...headers,
     },
     body: body === undefined ? undefined : json ? JSON.stringify(body) : (body as BodyInit),
     credentials: "same-origin",
   });
 
-  if (response.status === 204) return undefined as T;
+  if (response.status === 204) return { data: undefined as T };
 
   let payload: unknown;
   try {
@@ -66,11 +85,25 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     );
   }
 
-  return (payload as { data: T }).data;
+  return payload as { data: T; meta?: M };
+}
+
+/**
+ * Echo the readable CSRF cookie into a header. The server compares the two;
+ * a cross-origin page can cause the cookie to be sent but cannot read it, so
+ * it cannot set the matching header.
+ */
+function csrfHeader(): Record<string, string> {
+  if (typeof document === "undefined") return {};
+  const match = document.cookie.match(/(?:^|;\s*)vk_csrf=([^;]*)/);
+  return match?.[1] ? { "x-csrf-token": decodeURIComponent(match[1]) } : {};
 }
 
 export const api = {
   get: <T>(path: string, options?: RequestOptions) => request<T>(path, { ...options, method: "GET" }),
+  /** Get with pagination meta — returns `{ data, meta }` so the caller has `total`, `page` etc. */
+  getFull: <T, M = PageMeta>(path: string, options?: RequestOptions) =>
+    requestFull<T, M>(path, { ...options, method: "GET" }),
   post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     request<T>(path, { ...options, method: "POST", body }),
   put: <T>(path: string, body?: unknown, options?: RequestOptions) =>
