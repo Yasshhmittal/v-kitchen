@@ -417,6 +417,113 @@ export async function updateOrderStatus(
   });
 }
 
+/* ------------------------------- admin views ------------------------------ */
+
+export type OrderListRow = Order & {
+  customer: { id: string; name: string; phone: string } | null;
+  pickupSlot: { id: string; label: string; startTime: string; endTime: string } | null;
+  _count: { items: number };
+};
+
+export type OrderDetail = Prisma.OrderGetPayload<{
+  include: {
+    items: true;
+    customer: true;
+    pickupSlot: true;
+  };
+}>;
+
+const listInclude = {
+  customer: { select: { id: true, name: true, phone: true } },
+  pickupSlot: { select: { id: true, label: true, startTime: true, endTime: true } },
+  _count: { select: { items: true } },
+} satisfies Prisma.OrderInclude;
+
+/**
+ * Admin order list.
+ *
+ * `pickupDate` filters on the collection day rather than when the order was
+ * placed — the kitchen works from what has to go out today, not what came in.
+ */
+export async function listOrders(filters: {
+  search?: string;
+  status?: OrderStatus;
+  pickupDate?: Date;
+  page: number;
+  pageSize: number;
+  sort?: string;
+  order?: "asc" | "desc";
+}): Promise<{ items: OrderListRow[]; total: number }> {
+  const where: Prisma.OrderWhereInput = {
+    ...(filters.status ? { status: filters.status } : {}),
+    ...(filters.pickupDate ? { pickupDate: startOfDay(filters.pickupDate) } : {}),
+    ...(filters.search
+      ? {
+          OR: [
+            { orderNo: { contains: filters.search, mode: "insensitive" } },
+            { contactName: { contains: filters.search, mode: "insensitive" } },
+            { contactPhone: { contains: filters.search } },
+          ],
+        }
+      : {}),
+  };
+
+  const [items, total] = await Promise.all([
+    prisma.order.findMany({
+      where,
+      include: listInclude,
+      orderBy: buildOrderBy(filters.sort, filters.order),
+      skip: (filters.page - 1) * filters.pageSize,
+      take: filters.pageSize,
+    }),
+    prisma.order.count({ where }),
+  ]);
+
+  return { items, total };
+}
+
+function buildOrderBy(
+  sort: string | undefined,
+  order: "asc" | "desc" = "desc",
+): Prisma.OrderOrderByWithRelationInput[] {
+  switch (sort) {
+    case "orderNo":
+      return [{ orderNo: order }];
+    case "total":
+      return [{ total: order }];
+    case "pickupDate":
+      return [{ pickupDate: order }, { createdAt: "desc" }];
+    case "status":
+      return [{ status: order }, { createdAt: "desc" }];
+    default:
+      return [{ createdAt: order }];
+  }
+}
+
+export async function getOrderById(id: string): Promise<OrderDetail | null> {
+  return prisma.order.findUnique({
+    where: { id },
+    include: { items: true, customer: true, pickupSlot: true },
+  });
+}
+
+/** Counts per status for the board's filter chips. */
+export async function countOrdersByStatus(): Promise<Record<OrderStatus, number>> {
+  const grouped = await prisma.order.groupBy({ by: ["status"], _count: { _all: true } });
+
+  const counts = {
+    PENDING: 0,
+    ACCEPTED: 0,
+    PREPARING: 0,
+    READY_FOR_PICKUP: 0,
+    COMPLETED: 0,
+    CANCELLED: 0,
+  } satisfies Record<OrderStatus, number>;
+
+  for (const row of grouped) counts[row.status] = row._count._all;
+  return counts;
+}
+
 /**
  * Public order lookup. Requires both the order number and the phone it was
  * placed with, so order numbers alone cannot be enumerated.

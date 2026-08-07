@@ -26,7 +26,7 @@ const querySchema = z.object({
 });
 
 export const GET = route(async (request: Request) => {
-  await requireAdmin("menu.view");
+  await requireAdmin("products.view");
 
   const url = new URL(request.url);
   const query = querySchema.parse(Object.fromEntries(url.searchParams));
@@ -48,7 +48,7 @@ export const GET = route(async (request: Request) => {
 /** POST /api/admin/products — add a packaged product. */
 export const POST = route(async (request: Request) => {
   await assertCsrf(request);
-  const session = await requireAdmin("menu.manage");
+  const session = await requireAdmin("products.manage");
 
   const input = productSchema.parse(await request.json());
   const product = await createProduct(input);

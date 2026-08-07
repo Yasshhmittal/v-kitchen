@@ -10,7 +10,7 @@ import { productUpdateSchema } from "@/server/validation/schemas";
 
 /** GET /api/admin/products/:id */
 export const GET = route(async (_request: Request, { params }: { params: Promise<{ id: string }> }) => {
-  await requireAdmin("menu.view");
+  await requireAdmin("products.view");
   const { id } = await params;
 
   const product = await getProductById(id);
@@ -28,7 +28,7 @@ export const GET = route(async (_request: Request, { params }: { params: Promise
  */
 export const PATCH = route(async (request: Request, { params }: { params: Promise<{ id: string }> }) => {
   await assertCsrf(request);
-  const session = await requireAdmin("menu.manage");
+  const session = await requireAdmin("products.manage");
   const { id } = await params;
 
   const before = await getProductById(id);
@@ -64,7 +64,7 @@ export const PATCH = route(async (request: Request, { params }: { params: Promis
 /** DELETE /api/admin/products/:id — refused once it appears on any order. */
 export const DELETE = route(async (request: Request, { params }: { params: Promise<{ id: string }> }) => {
   await assertCsrf(request);
-  const session = await requireAdmin("menu.manage");
+  const session = await requireAdmin("products.manage");
   const { id } = await params;
 
   const before = await getProductById(id);
