@@ -202,12 +202,19 @@ export async function createCustomerSession(customer: {
     },
   });
 
+  const maxAge = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
+
   jar.set(CUSTOMER_ACCESS_COOKIE, accessToken, baseCookie(15 * 60));
-  jar.set(
-    CUSTOMER_REFRESH_COOKIE,
-    refreshToken,
-    baseCookie(Math.floor((expiresAt.getTime() - Date.now()) / 1000)),
-  );
+  jar.set(CUSTOMER_REFRESH_COOKIE, refreshToken, baseCookie(maxAge));
+
+  // Customers get the same double-submit token as admins. Without it
+  // `assertCsrf` finds no cookie to compare against and falls through to the
+  // origin check alone, which is one layer short of what the account mutations
+  // are supposed to have.
+  jar.set(CSRF_COOKIE, generateRefreshToken().slice(0, 32), {
+    ...baseCookie(maxAge),
+    httpOnly: false, // the client must read this to echo it back in a header
+  });
 }
 
 export const getCustomerSession = cache(async (): Promise<CustomerSession | null> => {
@@ -282,6 +289,7 @@ export async function destroyCustomerSession(): Promise<void> {
 
   jar.delete(CUSTOMER_ACCESS_COOKIE);
   jar.delete(CUSTOMER_REFRESH_COOKIE);
+  jar.delete(CSRF_COOKIE);
 }
 
 // ---------------------------------------------------------------------------
