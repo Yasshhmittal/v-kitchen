@@ -3,6 +3,7 @@ import type { Menu, MenuItem, MenuSlot, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { DAILY_SLOTS, SPECIAL_SLOTS } from "@/lib/constants";
 import { ApiError } from "@/server/api/response";
+import type { MenuInput } from "@/server/validation/schemas";
 
 /**
  * Menu resolution.
@@ -16,6 +17,7 @@ import { ApiError } from "@/server/api/response";
 export type MenuWithEntries = Menu & {
   entries: Array<{
     id: string;
+    menuItemId: string;
     priceOverride: Prisma.Decimal | null;
     isAvailable: boolean;
     sortOrder: number;
@@ -201,6 +203,154 @@ export async function replaceMenuEntries(
         ]
       : []),
   ]);
+}
+
+export type MenuWithCounts = Menu & { _count: { entries: number } };
+
+/** The admin list: every menu regardless of publish state, newest day first. */
+export async function listMenus(filters: {
+  search?: string;
+  slot?: MenuSlot;
+  isActive?: boolean;
+  page: number;
+  pageSize: number;
+  sort?: string;
+  order?: "asc" | "desc";
+}): Promise<{ items: MenuWithCounts[]; total: number }> {
+  const where: Prisma.MenuWhereInput = {
+    ...(filters.slot ? { slot: filters.slot } : {}),
+    ...(filters.isActive !== undefined ? { isActive: filters.isActive } : {}),
+    ...(filters.search
+      ? {
+          OR: [
+            { title: { contains: filters.search, mode: "insensitive" } },
+            { subtitle: { contains: filters.search, mode: "insensitive" } },
+          ],
+        }
+      : {}),
+  };
+
+  const [items, total] = await Promise.all([
+    prisma.menu.findMany({
+      where,
+      include: { _count: { select: { entries: true } } },
+      orderBy: buildMenuOrderBy(filters.sort, filters.order),
+      skip: (filters.page - 1) * filters.pageSize,
+      take: filters.pageSize,
+    }),
+    prisma.menu.count({ where }),
+  ]);
+
+  return { items, total };
+}
+
+function buildMenuOrderBy(
+  sort: string | undefined,
+  order: "asc" | "desc" = "desc",
+): Prisma.MenuOrderByWithRelationInput[] {
+  switch (sort) {
+    case "title":
+      return [{ title: order }];
+    case "slot":
+      return [{ slot: order }, { title: "asc" }];
+    case "date":
+      return [{ date: order }, { sortOrder: "asc" }];
+    case "createdAt":
+      return [{ createdAt: order }];
+    default:
+      // Undated recurring menus sort last, so today's pinned menus lead.
+      return [{ date: "desc" }, { sortOrder: "asc" }, { title: "asc" }];
+  }
+}
+
+/** One menu with its full composition — what the editor loads. */
+export async function getMenuById(id: string): Promise<MenuWithEntries | null> {
+  return prisma.menu.findUnique({
+    where: { id },
+    include: {
+      entries: {
+        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+        include: {
+          menuItem: {
+            include: { category: { select: { id: true, name: true, slug: true } } },
+          },
+        },
+      },
+    },
+  });
+}
+
+export async function createMenu(input: MenuInput): Promise<Menu> {
+  const menu = await prisma.menu.create({
+    data: {
+      title: input.title,
+      subtitle: input.subtitle || null,
+      slot: input.slot,
+      date: input.date ? startOfDay(input.date) : null,
+      // A date pins the menu to one day, which makes a weekday rule meaningless.
+      dayOfWeek: input.date ? null : (input.dayOfWeek ?? null),
+      bannerImage: input.bannerImage || null,
+      orderCutoffTime: input.orderCutoffTime || null,
+      publishAt: input.publishAt ?? null,
+      isActive: input.isActive,
+      sortOrder: input.sortOrder,
+    },
+  });
+
+  if (input.entries.length > 0) {
+    await replaceMenuEntries(menu.id, input.entries);
+  }
+
+  return menu;
+}
+
+export async function updateMenu(id: string, input: Partial<MenuInput>): Promise<Menu> {
+  const existing = await prisma.menu.findUnique({ where: { id } });
+  if (!existing) throw ApiError.notFound("That menu doesn't exist.");
+
+  const date = input.date !== undefined ? (input.date ? startOfDay(input.date) : null) : undefined;
+
+  const menu = await prisma.menu.update({
+    where: { id },
+    data: {
+      ...(input.title !== undefined ? { title: input.title } : {}),
+      ...(input.subtitle !== undefined ? { subtitle: input.subtitle || null } : {}),
+      ...(input.slot !== undefined ? { slot: input.slot } : {}),
+      ...(date !== undefined ? { date } : {}),
+      ...(input.dayOfWeek !== undefined || date
+        ? { dayOfWeek: date ? null : (input.dayOfWeek ?? null) }
+        : {}),
+      ...(input.bannerImage !== undefined ? { bannerImage: input.bannerImage || null } : {}),
+      ...(input.orderCutoffTime !== undefined
+        ? { orderCutoffTime: input.orderCutoffTime || null }
+        : {}),
+      ...(input.publishAt !== undefined ? { publishAt: input.publishAt ?? null } : {}),
+      ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+      ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
+    },
+  });
+
+  // Absent entries means "composition untouched"; an empty array means "empty it".
+  if (input.entries !== undefined) {
+    await replaceMenuEntries(id, input.entries);
+  }
+
+  return menu;
+}
+
+/**
+ * Delete a menu. Entries cascade, so the dishes themselves are untouched — only
+ * this composition of them goes away.
+ */
+export async function deleteMenu(id: string): Promise<void> {
+  const existing = await prisma.menu.findUnique({ where: { id } });
+  if (!existing) throw ApiError.notFound("That menu doesn't exist.");
+  await prisma.menu.delete({ where: { id } });
+}
+
+/** Publish/unpublish — the one-click action on the list row. */
+export async function setMenuActive(id: string, isActive: boolean): Promise<Menu> {
+  return prisma.menu.update({ where: { id }, data: { isActive } });
 }
 
 /** Copy a menu — the "duplicate yesterday" button. */

@@ -4,12 +4,13 @@ import * as React from "react";
 import { useForm, Controller, type FieldValues, type Path, type PathValue } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, Loader2 } from "lucide-react";
-import type { ZodType } from "zod";
+import type { ZodType, ZodTypeDef } from "zod";
 
 import { cn } from "@/lib/cn";
 import { ApiClientError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
+import { TagsInput } from "@/components/ui/tags-input";
 import {
   Field,
   Select,
@@ -57,7 +58,8 @@ export type FieldType =
   | "checkbox"
   | "image"
   | "date"
-  | "time";
+  | "time"
+  | "tags";
 
 export interface FieldDef<T extends FieldValues> {
   name: Path<T>;
@@ -91,7 +93,12 @@ export interface CrudFormProps<T extends FieldValues> {
   title: string;
   description?: string;
   fields: FieldDef<T>[];
-  schema: ZodType<T>;
+  /**
+   * The same schema the API validates with. Input is left open because several
+   * schemas `preprocess` ("" -> undefined and the like), so what the form hands
+   * in isn't always the shape that comes out.
+   */
+  schema: ZodType<T, ZodTypeDef, unknown>;
   defaultValues: T;
   /** Persist the record. Throw to keep the dialog open and show the error. */
   onSubmit: (values: T) => Promise<void>;
@@ -376,6 +383,21 @@ function FormField<T extends FieldValues>({
           disabled={field.disabled}
           aria-invalid={invalid}
           {...register(field.name)}
+        />
+      ) : field.type === "tags" ? (
+        <Controller
+          name={field.name}
+          control={control}
+          render={({ field: controlled }) => (
+            <TagsInput
+              id={field.name}
+              placeholder={field.placeholder ?? "spicy, popular, jain"}
+              disabled={field.disabled}
+              invalid={Boolean(error)}
+              value={Array.isArray(controlled.value) ? (controlled.value as string[]) : []}
+              onChange={controlled.onChange}
+            />
+          )}
         />
       ) : field.type === "number" ? (
         <Input
