@@ -288,6 +288,11 @@ export async function createOrder(
   return prisma.$transaction(async (tx) => {
     // Guest checkout still creates a customer record, keyed by phone, so the
     // owner sees repeat customers and the person can claim the history later.
+    //
+    // For a signed-in customer the phone on the order is taken from the account,
+    // not from the form: that number was proved by a one-time code, and letting
+    // a typed-over value through would file the order — and its tracking
+    // lookup — under a number nobody has verified.
     const customer = customerId
       ? await tx.customer.update({
           where: { id: customerId },
@@ -307,6 +312,8 @@ export async function createOrder(
       throw ApiError.forbidden("We can't accept orders from this account. Please call us.");
     }
 
+    const contactPhone = customerId ? customer.phone : input.contactPhone;
+
     const order = await tx.order.create({
       data: {
         orderNo: await nextOrderNo(tx),
@@ -321,7 +328,7 @@ export async function createOrder(
         couponCode,
         notes: input.notes ?? null,
         contactName: input.contactName,
-        contactPhone: input.contactPhone,
+        contactPhone,
         contactEmail: input.contactEmail ?? null,
         items: {
           create: lines.map((line) => ({

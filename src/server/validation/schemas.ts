@@ -113,22 +113,17 @@ export const changePasswordSchema = z
     path: ["confirmPassword"],
   });
 
-export const customerRegisterSchema = z
-  .object({
-    name: z.string().min(2, "Enter your name").max(80),
-    phone: phoneSchema,
-    email: optionalEmailSchema,
-    password: passwordSchema,
-    confirmPassword: z.string(),
-  })
-  .refine((d) => d.password === d.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
-  });
-
-export const customerLoginSchema = z.object({
+/** Step one of sign-in: prove you can receive a message at this number. */
+export const otpRequestSchema = z.object({
   phone: phoneSchema,
-  password: z.string().min(1, "Enter your password").max(200),
+});
+
+export const otpVerifySchema = z.object({
+  phone: phoneSchema,
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "Enter the 6-digit code"),
 });
 
 export const customerProfileSchema = z.object({
@@ -464,9 +459,9 @@ export const reorderSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export type AdminLoginInput = z.infer<typeof adminLoginSchema>;
-export type CustomerRegisterInput = z.infer<typeof customerRegisterSchema>;
-export type CustomerLoginInput = z.infer<typeof customerLoginSchema>;
 export type CustomerProfileInput = z.infer<typeof customerProfileSchema>;
+export type OtpRequestInput = z.infer<typeof otpRequestSchema>;
+export type OtpVerifyInput = z.infer<typeof otpVerifySchema>;
 export type CategoryInput = z.infer<typeof categorySchema>;
 export type MenuItemInput = z.infer<typeof menuItemSchema>;
 export type MenuInput = z.infer<typeof menuSchema>;

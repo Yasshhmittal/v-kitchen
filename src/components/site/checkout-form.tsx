@@ -108,6 +108,13 @@ export function CheckoutForm({
   const pickupDate = watch("pickupDate");
   const pickupSlotId = watch("pickupSlotId");
 
+  // `defaults` is only ever populated from a signed-in session, so its presence
+  // is what tells us the phone number has been proved by a one-time code. The
+  // field is shown read-only rather than hidden — people want to see which
+  // number the kitchen will ring — and the server ignores it either way,
+  // taking the phone from the account row whenever there is a session.
+  const isSignedIn = defaults !== null && defaults.phone.length > 0;
+
   // Re-price against the database. Runs once the cart has hydrated, and again
   // if the customer edits the cart in another tab and comes back.
   const cartSignature = lines.map((line) => `${line.key}x${line.quantity}`).join("|");
@@ -284,7 +291,11 @@ export function CheckoutForm({
               label="Phone number"
               htmlFor="contactPhone"
               error={errors.contactPhone?.message}
-              help="We'll call this number if there's a problem."
+              help={
+                isSignedIn
+                  ? "The number you signed in with. Call us if it needs changing."
+                  : "We'll call this number if there's a problem."
+              }
               required
             >
               <Input
@@ -292,7 +303,9 @@ export function CheckoutForm({
                 type="tel"
                 inputMode="tel"
                 autoComplete="tel"
+                readOnly={isSignedIn}
                 aria-invalid={Boolean(errors.contactPhone)}
+                className={cn(isSignedIn && "bg-secondary/60 text-muted-foreground")}
                 {...register("contactPhone")}
               />
             </Field>

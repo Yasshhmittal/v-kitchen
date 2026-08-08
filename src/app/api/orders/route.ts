@@ -3,6 +3,7 @@ import { assertSameOrigin } from "@/server/api/csrf";
 import { rateLimit, requestIp } from "@/server/api/guards";
 import { getCustomerSession } from "@/server/auth/session";
 import { createOrder } from "@/server/services/order.service";
+import { sendOrderPlacedNotifications } from "@/server/services/notify.service";
 import { orderCreateSchema } from "@/server/validation/schemas";
 
 /**
@@ -24,6 +25,12 @@ export const POST = route(async (request: Request) => {
   const session = await getCustomerSession();
 
   const order = await createOrder(input, session?.customerId);
+
+  // The order is committed; the confirmation is a courtesy on top of it. Awaited
+  // so the send actually starts before this serverless invocation can be frozen,
+  // but it resolves even when a provider is down — a failed receipt must never
+  // report a placed order as failed, because the customer would order again.
+  await sendOrderPlacedNotifications(order.id);
 
   return created({
     id: order.id,

@@ -4,6 +4,7 @@ import type { Role } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import {
+  customerRefreshTokenExpiry,
   generateRefreshToken,
   hashToken,
   refreshTokenExpiry,
@@ -191,7 +192,7 @@ export async function createCustomerSession(customer: {
   });
 
   const refreshToken = generateRefreshToken();
-  const expiresAt = refreshTokenExpiry();
+  const expiresAt = customerRefreshTokenExpiry();
 
   await prisma.customerToken.create({
     data: {

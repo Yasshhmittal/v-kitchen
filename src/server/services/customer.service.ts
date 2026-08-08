@@ -2,75 +2,20 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/server/api/response";
-import { fakeVerify, hashPassword, verifyPassword } from "@/server/auth/password";
-import type {
-  CustomerLoginInput,
-  CustomerProfileInput,
-  CustomerRegisterInput,
-} from "@/server/validation/schemas";
+import type { CustomerProfileInput } from "@/server/validation/schemas";
 
 /**
  * Customer accounts.
  *
- * A `Customer` row already exists for anyone who has checked out as a guest,
- * keyed by phone number. Registering therefore *claims* that row rather than
- * creating a second one — which is what preserves a guest's order history when
- * they later decide to sign up.
+ * There is no password anywhere here: customers sign in with a one-time code
+ * sent to their phone (see `otp.service.ts`), and the `Customer` row is created
+ * or claimed at that moment. A guest who has ordered before already has a row
+ * keyed by the same number, so signing in inherits their order history rather
+ * than starting a second identity.
+ *
+ * Name and email are not asked for at sign-in. `createOrder` writes them back
+ * from the checkout form, so the second order already knows who you are.
  */
-
-export async function registerCustomer(input: CustomerRegisterInput) {
-  const phone = normalise(input.phone);
-  const existing = await prisma.customer.findUnique({ where: { phone } });
-
-  if (existing?.passwordHash) {
-    throw ApiError.conflict("An account already exists for that number. Try signing in instead.");
-  }
-  if (existing?.isBlocked) {
-    throw ApiError.forbidden("We can't create an account for that number. Please call us.");
-  }
-
-  const passwordHash = await hashPassword(input.password);
-
-  const customer = existing
-    ? await prisma.customer.update({
-        where: { id: existing.id },
-        data: {
-          name: input.name,
-          email: input.email ?? existing.email,
-          passwordHash,
-        },
-      })
-    : await prisma.customer.create({
-        data: {
-          name: input.name,
-          phone,
-          email: input.email ?? null,
-          passwordHash,
-        },
-      });
-
-  return { id: customer.id, name: customer.name, phone: customer.phone, claimed: Boolean(existing) };
-}
-
-export async function authenticateCustomer(input: CustomerLoginInput) {
-  const customer = await prisma.customer.findUnique({
-    where: { phone: normalise(input.phone) },
-  });
-
-  // Same generic message and comparable timing whether the number is unknown
-  // or the password is wrong — otherwise this endpoint confirms who has an
-  // account here.
-  if (!customer?.passwordHash) {
-    await fakeVerify();
-    throw ApiError.unauthenticated("That phone number or password isn't right.");
-  }
-
-  const valid = await verifyPassword(input.password, customer.passwordHash);
-  if (!valid) throw ApiError.unauthenticated("That phone number or password isn't right.");
-  if (customer.isBlocked) throw ApiError.forbidden("This account can't place orders. Please call us.");
-
-  return { id: customer.id, name: customer.name, phone: customer.phone };
-}
 
 /** Orders for the account screen, newest first. */
 export async function getCustomerOrders(customerId: string, limit = 30) {
@@ -191,11 +136,6 @@ export async function updateCustomerProfile(
   });
 }
 
-/** Phone numbers are the login identity, so store them one way only. */
-function normalise(phone: string): string {
-  return phone.trim().replace(/\s+/g, " ");
-}
-
 /* -------------------------------------------------------------------------- */
 /* admin views                                                                */
 /* -------------------------------------------------------------------------- */
@@ -213,7 +153,7 @@ export type CustomerRow = {
   phone: string;
   email: string | null;
   isBlocked: boolean;
-  /** True once they've set a password — guests never have one. */
+  /** True once they've signed in with a code — pure guests never have. */
   hasAccount: boolean;
   orderCount: number;
   totalSpent: number;
@@ -244,8 +184,8 @@ export async function listCustomers(params: {
     ...(params.hasAccount === undefined
       ? {}
       : params.hasAccount
-        ? { passwordHash: { not: null } }
-        : { passwordHash: null }),
+        ? { phoneVerifiedAt: { not: null } }
+        : { phoneVerifiedAt: null }),
     ...(params.isBlocked === undefined ? {} : { isBlocked: params.isBlocked }),
   };
 
@@ -274,7 +214,7 @@ export async function listCustomers(params: {
       phone: customer.phone,
       email: customer.email,
       isBlocked: customer.isBlocked,
-      hasAccount: Boolean(customer.passwordHash),
+      hasAccount: Boolean(customer.phoneVerifiedAt),
       orderCount: customer._count.orders,
       totalSpent: customer.orders.reduce((sum, order) => sum + Number(order.total), 0),
       lastOrderAt:

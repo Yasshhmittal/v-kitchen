@@ -75,3 +75,20 @@ export function refreshTokenExpiry(): Date {
   const days = Number.parseInt(process.env.REFRESH_TOKEN_TTL_DAYS || "7", 10);
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 }
+
+/**
+ * Customer sessions last far longer than staff ones.
+ *
+ * The trade-offs are not the same. A staff token grants access to every order,
+ * price and setting in the business, so it expires quickly. A customer token
+ * grants access to one person's own order history — and the alternative to a
+ * long session is asking someone to wait for an SMS every time they want to
+ * reorder lunch, which is the friction this whole flow exists to remove.
+ *
+ * The token is still revocable (it is a hashed row, rotated on every use), so a
+ * blocked customer stops working immediately regardless of expiry.
+ */
+export function customerRefreshTokenExpiry(): Date {
+  const days = Number.parseInt(process.env.CUSTOMER_REFRESH_TOKEN_TTL_DAYS || "180", 10);
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+}
