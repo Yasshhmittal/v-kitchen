@@ -43,7 +43,7 @@ export function NewsletterForm({ title, text }: { title: string; text: string })
   return (
     <div>
       <h3 className="font-display text-lg font-bold">{title}</h3>
-      <p className="mt-2 text-sm text-primary-foreground/70">{text}</p>
+      <p className="mt-2 text-sm text-primary-deep-foreground/70">{text}</p>
       <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-2 sm:flex-row">
         <label htmlFor="newsletter-email" className="sr-only">
           Email address
@@ -56,7 +56,7 @@ export function NewsletterForm({ title, text }: { title: string; text: string })
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           placeholder="you@example.com"
-          className="border-white/20 bg-white/10 text-primary-foreground placeholder:text-primary-foreground/50 focus-visible:ring-offset-transparent"
+          className="border-white/20 bg-white/10 text-primary-deep-foreground placeholder:text-primary-deep-foreground/50 focus-visible:ring-offset-transparent"
         />
         <Button type="submit" variant="accent" disabled={pending} className="shrink-0">
           {pending ? "Signing up…" : "Subscribe"}

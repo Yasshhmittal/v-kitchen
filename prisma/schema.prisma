@@ -124,10 +124,16 @@ model User {
 /// to the existing record so their guest order history is preserved.
 model Customer {
   id           String   @id @default(cuid())
-  name         String
+  /// Empty until they tell us, which happens at their first checkout rather
+  /// than at sign-in — the phone number alone is enough to log in.
+  name         String   @default("")
   phone        String   @unique
   email        String?
+  /// Legacy: kept so existing password accounts keep working. New customers
+  /// sign in with a one-time code and never set one.
   passwordHash String?
+  /// Set the first time a one-time code is verified for this number.
+  phoneVerifiedAt DateTime?
   addressNote  String?
   isBlocked    Boolean  @default(false)
   userId       String?  @unique
@@ -142,6 +148,27 @@ model Customer {
 
   @@index([phone])
   @@map("customers")
+}
+
+/// A one-time code sent to a phone number to prove the customer owns it.
+///
+/// The code itself is never stored — only a SHA-256 hash, exactly as with
+/// refresh tokens, so a leaked database row cannot be replayed as a login.
+/// `attempts` caps guessing at a handful of tries even before the short expiry
+/// runs out, and `consumedAt` makes a verified code single-use.
+model OtpChallenge {
+  id         String   @id @default(cuid())
+  phone      String
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  consumedAt DateTime?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([phone, createdAt])
+  @@index([expiresAt])
+  @@map("otp_challenges")
 }
 
 /// Refresh tokens are stored hashed and rotated on every use, so a stolen

@@ -57,7 +57,7 @@ export async function Footer() {
   ).replace("{year}", String(new Date().getFullYear()));
 
   return (
-    <footer className="bg-primary-deep text-primary-foreground">
+    <footer className="bg-primary-deep text-primary-deep-foreground">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-16">
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
           {/* Brand + contact */}
@@ -81,13 +81,13 @@ export async function Footer() {
               )}
             </Link>
 
-            {about && <p className="mt-4 text-sm text-primary-foreground/70">{about}</p>}
+            {about && <p className="mt-4 text-sm text-primary-deep-foreground/70">{about}</p>}
 
             <ul className="mt-5 space-y-3 text-sm">
               {address && (
                 <li className="flex gap-3">
                   <MapPin className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
-                  <span className="text-primary-foreground/80">{address}</span>
+                  <span className="text-primary-deep-foreground/80">{address}</span>
                 </li>
               )}
               {phone && (
@@ -95,7 +95,7 @@ export async function Footer() {
                   <Phone className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
                   <a
                     href={`tel:${normalizePhone(phone)}`}
-                    className="text-primary-foreground/80 underline-offset-4 hover:text-primary-foreground hover:underline"
+                    className="text-primary-deep-foreground/80 underline-offset-4 hover:text-primary-deep-foreground hover:underline"
                   >
                     {phone}
                   </a>
@@ -106,7 +106,7 @@ export async function Footer() {
                   <Mail className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
                   <a
                     href={`mailto:${email}`}
-                    className="break-all text-primary-foreground/80 underline-offset-4 hover:text-primary-foreground hover:underline"
+                    className="break-all text-primary-deep-foreground/80 underline-offset-4 hover:text-primary-deep-foreground hover:underline"
                   >
                     {email}
                   </a>
@@ -142,7 +142,7 @@ export async function Footer() {
                   <li key={`${link.href}-${link.label}`}>
                     <Link
                       href={link.href}
-                      className="text-primary-foreground/70 underline-offset-4 transition-colors hover:text-primary-foreground hover:underline"
+                      className="text-primary-deep-foreground/70 underline-offset-4 transition-colors hover:text-primary-deep-foreground hover:underline"
                     >
                       {link.label}
                     </Link>
@@ -162,7 +162,7 @@ export async function Footer() {
                     <li key={`${link.href}-${link.label}`}>
                       <Link
                         href={link.href}
-                        className="text-primary-foreground/70 underline-offset-4 transition-colors hover:text-primary-foreground hover:underline"
+                        className="text-primary-deep-foreground/70 underline-offset-4 transition-colors hover:text-primary-deep-foreground hover:underline"
                       >
                         {link.label}
                       </Link>
@@ -174,15 +174,15 @@ export async function Footer() {
 
             {hours.length > 0 && (
               <div className="mt-8">
-                <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-primary-foreground/60">
+                <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-primary-deep-foreground/60">
                   <Clock className="size-4" aria-hidden />
                   Opening hours
                 </h3>
                 <ul className="mt-3 space-y-1.5 text-sm">
                   {hours.map((entry) => (
                     <li key={entry.day} className="flex justify-between gap-4">
-                      <span className="text-primary-foreground/70">{entry.day.slice(0, 3)}</span>
-                      <span className="tabular-nums text-primary-foreground/90">
+                      <span className="text-primary-deep-foreground/70">{entry.day.slice(0, 3)}</span>
+                      <span className="tabular-nums text-primary-deep-foreground/90">
                         {entry.closed
                           ? "Closed"
                           : `${formatTime24to12(entry.open)} – ${formatTime24to12(entry.close)}`}
@@ -191,7 +191,7 @@ export async function Footer() {
                   ))}
                 </ul>
                 {hoursNote && (
-                  <p className="mt-3 text-xs text-primary-foreground/60">{hoursNote}</p>
+                  <p className="mt-3 text-xs text-primary-deep-foreground/60">{hoursNote}</p>
                 )}
               </div>
             )}
@@ -212,7 +212,7 @@ export async function Footer() {
       </div>
 
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-6 text-sm text-primary-foreground/60 sm:flex-row sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-6 text-sm text-primary-deep-foreground/60 sm:flex-row sm:px-6 lg:px-8">
           <p>{copyright}</p>
           <p className="flex items-center gap-1.5">
             <ShoppingBag className="size-3.5" aria-hidden />
