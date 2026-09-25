@@ -371,7 +371,9 @@ export async function createOrder(
         type: "ORDER_PLACED",
         title: `New order ${order.orderNo}`,
         body: `${input.contactName} · ${lines.length} item${lines.length === 1 ? "" : "s"} · ${total}`,
-        link: `/admin/orders/${order.id}`,
+        // A query param, not `/admin/orders/<id>` — there is no per-order route.
+        // The board reads `?order=` and opens that order's drawer.
+        link: `/admin/orders?order=${order.id}`,
         meta: { orderId: order.id, orderNo: order.orderNo },
       },
     });

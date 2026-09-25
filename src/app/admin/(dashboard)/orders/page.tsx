@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Calendar, Package, Phone, User } from "lucide-react";
 import type { OrderStatus } from "@prisma/client";
 import { useQuery } from "@tanstack/react-query";
@@ -26,6 +26,18 @@ export default function OrdersPage() {
   const [order, setOrder] = useState<"asc" | "desc">("desc");
 
   const debouncedSearch = useDebounce(search, 300);
+
+  // Deep link support: `/admin/orders?order=<id>` opens straight into that
+  // order. This is what an order-placed alert links to — the point of the
+  // notification is to get someone to the order, not to the list.
+  //
+  // Read in an effect rather than from `useSearchParams` so the server and the
+  // first client render agree that the drawer is closed; the drawer opens a
+  // tick later, with no hydration mismatch and no Suspense boundary needed.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("order");
+    if (id) setOpenOrderId(id);
+  }, []);
 
   const listQuery = useQuery({
     queryKey: ["admin", "orders", { search: debouncedSearch, status: statusFilter, page, sort, order }],
