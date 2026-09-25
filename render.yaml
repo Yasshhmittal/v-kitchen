@@ -1,12 +1,9 @@
 databases:
   - name: vkitchen-db
     databaseName: vkitchen
-    databaseUser: vkitchen
+    user: vkitchen
     plan: free
     region: oregon
-    ipAllowList:
-      - source: 0.0.0.0/0
-        description: allow all for Vercel and remote access
 
 services:
   - type: web
